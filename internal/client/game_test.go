@@ -203,3 +203,47 @@ func TestPregenerateTilesWithVaryingCache(t *testing.T) {
 		t.Errorf("expected different image pointer for isEven=false")
 	}
 }
+
+func TestGameMinimapIntegration(t *testing.T) {
+	cam := NewCamera(800, 600, 300.0, 10)
+	input := &mockInputProvider{mx: 400, my: 300}
+	m := tilemap.NewDefaultMap()
+
+	g := NewGame(cam, input, m)
+
+	// Verify minimap was created and initialized
+	minimap := g.GetMinimap()
+	if minimap == nil {
+		t.Fatalf("expected minimap to be non-nil after NewGame with a map")
+	}
+
+	if minimap.MapWidthTiles != tilemap.MapWidth || minimap.MapHeightTiles != tilemap.MapHeight {
+		t.Errorf("expected minimap dimensions to match tilemap dimensions")
+	}
+
+	// Test SetMap with a new map
+	m2 := tilemap.NewDefaultMap()
+	g.SetMap(m2)
+	if g.GetMinimap() == nil {
+		t.Errorf("expected minimap to remain non-nil after SetMap")
+	}
+
+	// Verify minimap is initialized if NewGame was called with nil map
+	gNilMap := NewGame(cam, input, nil)
+	if gNilMap.GetMinimap() != nil {
+		t.Errorf("expected minimap to be nil initially when game map is nil")
+	}
+	gNilMap.SetMap(m)
+	if gNilMap.GetMinimap() == nil {
+		t.Fatalf("expected minimap to be created when SetMap is called with a non-nil map")
+	}
+
+	// Verify Game.Draw runs with minimap without panic
+	screen := ebiten.NewImage(800, 600)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Game.Draw panicked with minimap: %v", r)
+		}
+	}()
+	g.Draw(screen)
+}

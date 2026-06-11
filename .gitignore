@@ -57,6 +57,9 @@ _test/
 
 # Databases and database dumps
 *.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
 *.sqlite3
 *.db
 *.db-journal
