@@ -566,3 +566,77 @@ func TestMinimapUpdateReleaseButton(t *testing.T) {
 		t.Errorf("expected camera position to remain unchanged at (1000, 1000), got (%f, %f)", cam.X, cam.Y)
 	}
 }
+
+func TestMinimapScalingAndCoordinates(t *testing.T) {
+	sizes := []struct {
+		widthTiles, heightTiles int
+		tileSize                int
+		expectedPx              float64
+	}{
+		{64, 64, 32, 2048},
+		{128, 128, 32, 4096},
+		{256, 256, 32, 8192},
+	}
+
+	for _, sz := range sizes {
+		m := NewMinimap(sz.widthTiles, sz.heightTiles, sz.tileSize)
+		if m.MapWidthPx() != sz.expectedPx {
+			t.Errorf("expected map width in px to be %f for %dx%d map, got %f", sz.expectedPx, sz.widthTiles, sz.heightTiles, m.MapWidthPx())
+		}
+		if m.MapHeightPx() != sz.expectedPx {
+			t.Errorf("expected map height in px to be %f for %dx%d map, got %f", sz.expectedPx, sz.widthTiles, sz.heightTiles, m.MapHeightPx())
+		}
+
+		// Test center of map
+		rx, ry := m.WorldToMinimap(sz.expectedPx/2, sz.expectedPx/2)
+		if rx != 128 || ry != 128 {
+			t.Errorf("expected center of %dx%d map to map to (128, 128) on minimap, got (%f, %f)", sz.widthTiles, sz.heightTiles, rx, ry)
+		}
+
+		// Test map to world from minimap center
+		wx, wy := m.MinimapToWorld(128, 128)
+		if wx != sz.expectedPx/2 || wy != sz.expectedPx/2 {
+			t.Errorf("expected minimap center (128, 128) to map to center of %dx%d world, got (%f, %f)", sz.widthTiles, sz.heightTiles, wx, wy)
+		}
+	}
+}
+
+func TestMinimapClickAndDragDifferentMapSizes(t *testing.T) {
+	sizes := []struct {
+		widthTiles, heightTiles int
+		tileSize                int
+		expectedCamX            float64
+		expectedCamY            float64
+	}{
+		{64, 64, 32, 624, 724},      // 2048x2048, center wx=1024, wy=1024, cam = wx - vpW/2 = 1024-400 = 624, wy - vpH/2 = 1024-300 = 724
+		{128, 128, 32, 1648, 1748},  // 4096x4096, center wx=2048, wy=2048, cam = 2048-400 = 1648, 2048-300 = 1748
+		{256, 256, 32, 3696, 3796},  // 8192x8192, center wx=4096, wy=4096, cam = 4096-400 = 3696, 4096-300 = 3796
+	}
+
+	for _, sz := range sizes {
+		m := NewMinimap(sz.widthTiles, sz.heightTiles, sz.tileSize)
+		cam := NewCamera(800, 600, 300.0, 10)
+		cam.SetMapDimensions(sz.widthTiles, sz.heightTiles, sz.tileSize)
+		cam.SetPosition(0, 0)
+
+		// Click exactly in the middle of the minimap
+		// screenHeight = 600
+		// screenMinimapY = 600 - 16 - 256 = 328
+		// Middle: mx = 16 + 128 = 144, my = 328 + 128 = 456
+		mock := &mockInputProvider{
+			click: true,
+			mx:    144,
+			my:    456,
+		}
+
+		m.Update(cam, mock)
+
+		if !m.IsDragging() {
+			t.Errorf("expected dragging to be true for %dx%d map", sz.widthTiles, sz.heightTiles)
+		}
+
+		if cam.X != sz.expectedCamX || cam.Y != sz.expectedCamY {
+			t.Errorf("for %dx%d map, expected camera position to be (%f, %f), got (%f, %f)", sz.widthTiles, sz.heightTiles, sz.expectedCamX, sz.expectedCamY, cam.X, cam.Y)
+		}
+	}
+}
