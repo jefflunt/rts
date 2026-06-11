@@ -9,6 +9,10 @@
 *.dylib
 *.test
 *.out
+*.a
+*.o
+*.obj
+*.coverprofile
 
 # File system metadata
 .DS_Store
@@ -28,3 +32,14 @@ log/
 # Databases and database dumps
 *.sqlite
 *.db
+
+# IDEs, Editors, and OS-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local configuration and secrets
+.env
+.env.local
+.env.*.local
