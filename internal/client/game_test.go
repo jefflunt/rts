@@ -247,3 +247,55 @@ func TestGameMinimapIntegration(t *testing.T) {
 	}()
 	g.Draw(screen)
 }
+
+func TestGameMinimapUpdateInteraction(t *testing.T) {
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(1000, 1000)
+
+	// In 800x600 screen, the minimap overlay Y coordinate starts at:
+	// 600 - 16 - 256 = 328
+	// X coordinate starts at: 16
+	// The center of the minimap is at:
+	// X = 16 + 128 = 144
+	// Y = 328 + 128 = 456
+	input := &mockInputProvider{
+		click: true,
+		mx:    144,
+		my:    456,
+	}
+	m := tilemap.NewDefaultMap()
+
+	g := NewGame(cam, input, m)
+
+	// Call Update, which should trigger the minimap interaction,
+	// dragging the camera to center on the world position matching the minimap center.
+	// Map size: 256 * 32 = 8192.
+	// Minimap center: (128, 128).
+	// World position: (4096, 4096).
+	// Target camera position (centering on 4096, 4096 with 800x600 viewport):
+	// targetX = 4096 - 400 = 3696
+	// targetY = 4096 - 300 = 3796
+	err := g.Update()
+	if err != nil {
+		t.Fatalf("unexpected error from Update: %v", err)
+	}
+
+	if cam.X != 3696 || cam.Y != 3796 {
+		t.Errorf("expected camera position to pan to (3696, 3796) via minimap interaction, got (%f, %f)", cam.X, cam.Y)
+	}
+
+	if !g.GetMinimap().IsDragging() {
+		t.Error("expected minimap to be in dragging state")
+	}
+
+	// Release mouse and verify it is no longer dragging on next Update
+	input.click = false
+	err = g.Update()
+	if err != nil {
+		t.Fatalf("unexpected error from Update: %v", err)
+	}
+
+	if g.GetMinimap().IsDragging() {
+		t.Error("expected minimap to stop dragging after click release")
+	}
+}
