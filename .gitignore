@@ -9,6 +9,8 @@
 *.dylib
 *.test
 *.out
+*.prof
+*.pprof
 *.a
 *.o
 *.obj
