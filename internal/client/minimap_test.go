@@ -1,8 +1,11 @@
 package client
 
 import (
+	"image/color"
 	"math"
 	"testing"
+
+	tilemap "scrollable-tilemap/internal/map"
 )
 
 func TestNewMinimap(t *testing.T) {
@@ -316,5 +319,95 @@ func TestViewportIndicatorBounds(t *testing.T) {
 	}
 	if math.Abs(h2-18.75) > 1e-9 {
 		t.Errorf("expected height to be 18.75, got %f", h2)
+	}
+}
+
+func TestNewMinimapCacheImage(t *testing.T) {
+	m := NewMinimap(128, 128, 16)
+	if m.CacheImage == nil {
+		t.Fatal("expected CacheImage to be initialized, got nil")
+	}
+	bounds := m.CacheImage.Bounds()
+	if bounds.Dx() != 256 || bounds.Dy() != 256 {
+		t.Errorf("expected CacheImage bounds to be 256x256, got %dx%d", bounds.Dx(), bounds.Dy())
+	}
+}
+
+func TestGetTileColor(t *testing.T) {
+	m := NewMinimap(256, 256, 16)
+
+	tests := []struct {
+		tileType tilemap.TileType
+		expected color.RGBA
+	}{
+		{tilemap.TileTypeGrassStandard, ColorStandard},
+		{tilemap.TileTypeGrassVariant1, ColorVariant1},
+		{tilemap.TileTypeGrassVariant2, ColorVariant2},
+		{tilemap.TileType(99), ColorStandard}, // Default fallback
+	}
+
+	for _, tt := range tests {
+		res := m.GetTileColor(tt.tileType)
+		resRGBA := color.RGBAModel.Convert(res).(color.RGBA)
+		if resRGBA != tt.expected {
+			t.Errorf("GetTileColor(%d) = %v, expected %v", tt.tileType, resRGBA, tt.expected)
+		}
+	}
+}
+
+func TestUpdateCacheValidSizes(t *testing.T) {
+	// Ebiten doesn't support reading pixels in headless tests without a running game window,
+	// so we verify that UpdateCache runs successfully without panics for all supported dimensions,
+	// properly initializes/clears the cache, and maintains correct image dimensions.
+	
+	dimensions := []struct {
+		width, height int
+	}{
+		{64, 64},
+		{128, 128},
+		{256, 256},
+		{0, 0}, // Zero sizes boundary check
+	}
+
+	for _, dim := range dimensions {
+		t.Run("dim", func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("UpdateCache panicked for dimensions %dx%d: %v", dim.width, dim.height, r)
+				}
+			}()
+
+			m := NewMinimap(dim.width, dim.height, 32)
+			tileMap := tilemap.NewDefaultMap() // Populate standard default map
+
+			m.UpdateCache(tileMap)
+
+			if m.CacheImage == nil {
+				t.Error("expected CacheImage to be non-nil after UpdateCache")
+			}
+			bounds := m.CacheImage.Bounds()
+			if bounds.Dx() != 256 || bounds.Dy() != 256 {
+				t.Errorf("expected CacheImage bounds to be 256x256, got %dx%d", bounds.Dx(), bounds.Dy())
+			}
+		})
+	}
+}
+
+func TestUpdateCacheNilMap(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("UpdateCache panicked for nil map: %v", r)
+		}
+	}()
+
+	m := NewMinimap(256, 256, 16)
+	m.UpdateCache(nil)
+
+	if m.CacheImage == nil {
+		t.Error("expected CacheImage to be non-nil after UpdateCache(nil)")
+	}
+	bounds := m.CacheImage.Bounds()
+	if bounds.Dx() != 256 || bounds.Dy() != 256 {
+		t.Errorf("expected CacheImage bounds to be 256x256, got %dx%d", bounds.Dx(), bounds.Dy())
 	}
 }
