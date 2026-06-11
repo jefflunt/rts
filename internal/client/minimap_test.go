@@ -1,0 +1,320 @@
+package client
+
+import (
+	"math"
+	"testing"
+)
+
+func TestNewMinimap(t *testing.T) {
+	m := NewMinimap(128, 128, 16)
+	if m.MapWidthTiles != 128 {
+		t.Errorf("expected MapWidthTiles to be 128, got %d", m.MapWidthTiles)
+	}
+	if m.MapHeightTiles != 128 {
+		t.Errorf("expected MapHeightTiles to be 128, got %d", m.MapHeightTiles)
+	}
+	if m.TileSize != 16 {
+		t.Errorf("expected TileSize to be 16, got %d", m.TileSize)
+	}
+
+	if w := m.MapWidthPx(); w != 2048 {
+		t.Errorf("expected MapWidthPx to be 2048, got %f", w)
+	}
+	if h := m.MapHeightPx(); h != 2048 {
+		t.Errorf("expected MapHeightPx to be 2048, got %f", h)
+	}
+}
+
+func TestWorldToMinimap(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+
+	tests := []struct {
+		name       string
+		wx, wy     float64
+		expectedRx float64
+		expectedRy float64
+	}{
+		{"Middle of map", 4096, 4096, 128, 128},
+		{"Top-left corner", 0, 0, 0, 0},
+		{"Bottom-right corner", 8192, 8192, 256, 256},
+		{"Clamped negative", -100, -200, 0, 0},
+		{"Clamped out of bounds", 10000, 12000, 256, 256},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rx, ry := m.WorldToMinimap(tt.wx, tt.wy)
+			if rx != tt.expectedRx || ry != tt.expectedRy {
+				t.Errorf("WorldToMinimap(%f, %f) = (%f, %f); want (%f, %f)", tt.wx, tt.wy, rx, ry, tt.expectedRx, tt.expectedRy)
+			}
+		})
+	}
+}
+
+func TestWorldToMinimapUnclamped(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+
+	tests := []struct {
+		name       string
+		wx, wy     float64
+		expectedRx float64
+		expectedRy float64
+	}{
+		{"Middle of map", 4096, 4096, 128, 128},
+		{"Top-left corner", 0, 0, 0, 0},
+		{"Bottom-right corner", 8192, 8192, 256, 256},
+		{"Negative values unclamped", -4096, -8192, -128, -256},
+		{"Out of bounds unclamped", 16384, 16384, 512, 512},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rx, ry := m.WorldToMinimapUnclamped(tt.wx, tt.wy)
+			if rx != tt.expectedRx || ry != tt.expectedRy {
+				t.Errorf("WorldToMinimapUnclamped(%f, %f) = (%f, %f); want (%f, %f)", tt.wx, tt.wy, rx, ry, tt.expectedRx, tt.expectedRy)
+			}
+		})
+	}
+}
+
+func TestMinimapToWorld(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+
+	tests := []struct {
+		name       string
+		rx, ry     float64
+		expectedWx float64
+		expectedWy float64
+	}{
+		{"Middle of minimap", 128, 128, 4096, 4096},
+		{"Top-left corner", 0, 0, 0, 0},
+		{"Bottom-right corner", 256, 256, 8192, 8192},
+		{"Clamped negative", -50, -100, 0, 0},
+		{"Clamped out of bounds", 300, 500, 8192, 8192},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wx, wy := m.MinimapToWorld(tt.rx, tt.ry)
+			if wx != tt.expectedWx || wy != tt.expectedWy {
+				t.Errorf("MinimapToWorld(%f, %f) = (%f, %f); want (%f, %f)", tt.rx, tt.ry, wx, wy, tt.expectedWx, tt.expectedWy)
+			}
+		})
+	}
+}
+
+func TestMinimapToWorldUnclamped(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+
+	tests := []struct {
+		name       string
+		rx, ry     float64
+		expectedWx float64
+		expectedWy float64
+	}{
+		{"Middle of minimap", 128, 128, 4096, 4096},
+		{"Top-left corner", 0, 0, 0, 0},
+		{"Bottom-right corner", 256, 256, 8192, 8192},
+		{"Negative values unclamped", -128, -256, -4096, -8192},
+		{"Out of bounds unclamped", 512, 512, 16384, 16384},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wx, wy := m.MinimapToWorldUnclamped(tt.rx, tt.ry)
+			if wx != tt.expectedWx || wy != tt.expectedWy {
+				t.Errorf("MinimapToWorldUnclamped(%f, %f) = (%f, %f); want (%f, %f)", tt.rx, tt.ry, wx, wy, tt.expectedWx, tt.expectedWy)
+			}
+		})
+	}
+}
+
+func TestZeroMapDimensions(t *testing.T) {
+	m := NewMinimap(0, 0, 0)
+	rx, ry := m.WorldToMinimap(100, 100)
+	if rx != 0 || ry != 0 {
+		t.Errorf("expected 0 for zero map, got (%f, %f)", rx, ry)
+	}
+
+	rxUnclamped, ryUnclamped := m.WorldToMinimapUnclamped(100, 100)
+	if rxUnclamped != 0 || ryUnclamped != 0 {
+		t.Errorf("expected 0 for zero map unclamped, got (%f, %f)", rxUnclamped, ryUnclamped)
+	}
+
+	wx, wy := m.MinimapToWorld(128, 128)
+	if wx != 0 || wy != 0 {
+		t.Errorf("expected 0 for zero map minimap-to-world, got (%f, %f)", wx, wy)
+	}
+
+	wxUnclamped, wyUnclamped := m.MinimapToWorldUnclamped(128, 128)
+	if wxUnclamped != 0 || wyUnclamped != 0 {
+		t.Errorf("expected 0 for zero map minimap-to-world unclamped, got (%f, %f)", wxUnclamped, wyUnclamped)
+	}
+}
+
+func TestScreenToMinimap(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+	screenHeight := 600
+
+	// screenMinimapX = 16
+	// screenMinimapY = 600 - 16 - 256 = 328
+
+	tests := []struct {
+		name         string
+		sx, sy       float64
+		expectedRx   float64
+		expectedRy   float64
+		expectedOk   bool
+	}{
+		{"Minimap top-left screen position", 16, 328, 0, 0, true},
+		{"Minimap bottom-right screen position", 272, 584, 256, 256, true},
+		{"Minimap center screen position", 144, 456, 128, 128, true},
+		{"Left out of bounds", 10, 456, -6, 128, false},
+		{"Right out of bounds", 280, 456, 264, 128, false},
+		{"Top out of bounds", 144, 320, 128, -8, false},
+		{"Bottom out of bounds", 144, 590, 128, 262, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rx, ry, ok := m.ScreenToMinimap(tt.sx, tt.sy, screenHeight)
+			if ok != tt.expectedOk {
+				t.Errorf("ScreenToMinimap(%f, %f) ok = %v; want %v", tt.sx, tt.sy, ok, tt.expectedOk)
+			}
+			if rx != tt.expectedRx || ry != tt.expectedRy {
+				t.Errorf("ScreenToMinimap(%f, %f) = (%f, %f); want (%f, %f)", tt.sx, tt.sy, rx, ry, tt.expectedRx, tt.expectedRy)
+			}
+		})
+	}
+}
+
+func TestMinimapToScreen(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+	screenHeight := 600
+
+	// screenMinimapX = 16
+	// screenMinimapY = 328
+
+	tests := []struct {
+		name       string
+		rx, ry     float64
+		expectedSx float64
+		expectedSy float64
+	}{
+		{"Minimap local top-left", 0, 0, 16, 328},
+		{"Minimap local bottom-right", 256, 256, 272, 584},
+		{"Minimap local center", 128, 128, 144, 456},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sx, sy := m.MinimapToScreen(tt.rx, tt.ry, screenHeight)
+			if sx != tt.expectedSx || sy != tt.expectedSy {
+				t.Errorf("MinimapToScreen(%f, %f) = (%f, %f); want (%f, %f)", tt.rx, tt.ry, sx, sy, tt.expectedSx, tt.expectedSy)
+			}
+		})
+	}
+}
+
+func TestScreenToWorld(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+	screenHeight := 600
+
+	// screenMinimapX = 16
+	// screenMinimapY = 328
+
+	tests := []struct {
+		name         string
+		sx, sy       float64
+		expectedWx   float64
+		expectedWy   float64
+		expectedOk   bool
+	}{
+		{"Minimap top-left click", 16, 328, 0, 0, true},
+		{"Minimap bottom-right click", 272, 584, 8192, 8192, true},
+		{"Minimap center click", 144, 456, 4096, 4096, true},
+		{"Outside left click (clamped)", 10, 456, 0, 4096, false},
+		{"Outside top click (clamped)", 144, 300, 4096, 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wx, wy, ok := m.ScreenToWorld(tt.sx, tt.sy, screenHeight)
+			if ok != tt.expectedOk {
+				t.Errorf("ScreenToWorld(%f, %f) ok = %v; want %v", tt.sx, tt.sy, ok, tt.expectedOk)
+			}
+			if wx != tt.expectedWx || wy != tt.expectedWy {
+				t.Errorf("ScreenToWorld(%f, %f) = (%f, %f); want (%f, %f)", tt.sx, tt.sy, wx, wy, tt.expectedWx, tt.expectedWy)
+			}
+		})
+	}
+}
+
+func TestCalculateViewportIndicator(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+	screenHeight := 600
+
+	// screenMinimapX = 16
+	// screenMinimapY = 328
+	// camera top-left at (0, 0), viewport width 800, viewport height 600
+	// rx1, ry1 = WorldToMinimap(0, 0) = (0, 0)
+	// rx2, ry2 = WorldToMinimap(800, 600) = (800/8192*256, 600/8192*256) = (25, 18.75)
+	// x = 16 + 0 = 16
+	// y = 328 + 0 = 328
+	// w = 25 - 0 = 25
+	// h = 18.75 - 0 = 18.75
+
+	x, y, w, h := m.CalculateViewportIndicator(0, 0, 800, 600, screenHeight)
+	if x != 16.0 {
+		t.Errorf("expected x to be 16.0, got %f", x)
+	}
+	if y != 328.0 {
+		t.Errorf("expected y to be 328.0, got %f", y)
+	}
+	if math.Abs(w-25.0) > 1e-9 {
+		t.Errorf("expected width to be 25.0, got %f", w)
+	}
+	if math.Abs(h-18.75) > 1e-9 {
+		t.Errorf("expected height to be 18.75, got %f", h)
+	}
+}
+
+func TestViewportIndicatorBounds(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+
+	// Nil Camera
+	x, y, w, h := m.ViewportIndicatorBounds(nil)
+	if x != 0 || y != 0 || w != 0 || h != 0 {
+		t.Errorf("expected zeroes for nil camera, got (%f, %f, %f, %f)", x, y, w, h)
+	}
+
+	// Valid Camera
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(4096, 4096) // middle of world
+
+	// ViewportIndicatorBounds calls:
+	// m.CalculateViewportIndicator(cam.X, cam.Y, cam.ViewportWidth, cam.ViewportHeight, cam.ViewportHeight)
+	// cam.ViewportHeight = 600 as the screen height
+	// cam.X, cam.Y = 4096, 4096
+	// rx1, ry1 = WorldToMinimap(4096, 4096) = (128, 128)
+	// rx2, ry2 = WorldToMinimap(4096+800, 4096+600) = (4896/8192*256, 4696/8192*256) = (153, 146.75)
+	// screenMinimapY = 600 - 16 - 256 = 328
+	// x = 16 + 128 = 144
+	// y = 328 + 128 = 456
+	// w = 153 - 128 = 25
+	// h = 146.75 - 128 = 18.75
+
+	x2, y2, w2, h2 := m.ViewportIndicatorBounds(cam)
+	if x2 != 144.0 {
+		t.Errorf("expected x to be 144.0, got %f", x2)
+	}
+	if y2 != 456.0 {
+		t.Errorf("expected y to be 456.0, got %f", y2)
+	}
+	if math.Abs(w2-25.0) > 1e-9 {
+		t.Errorf("expected width to be 25.0, got %f", w2)
+	}
+	if math.Abs(h2-18.75) > 1e-9 {
+		t.Errorf("expected height to be 18.75, got %f", h2)
+	}
+}
