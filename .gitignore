@@ -9,6 +9,7 @@ build/
 *.so
 *.dylib
 *.test
+*.test.exe
 *.out
 *.prof
 *.pprof
@@ -17,6 +18,8 @@ build/
 *.obj
 *.wasm
 *.coverprofile
+*.debug
+core
 /game
 /server
 /client
@@ -35,6 +38,9 @@ ehthumbs.db
 Thumbs.db
 [Dd]esktop.ini
 $RECYCLE.BIN/
+Icon?
+.AppleDouble
+.LSOverride
 
 # Ephemeral auto-generated files
 tmp/
@@ -45,6 +51,9 @@ log/
 .cache/
 _test/
 .go-work/
+\#*#
+.emacs.desktop
+.emacs.desktop.lock
 
 # Databases and database dumps
 *.sqlite
@@ -53,6 +62,7 @@ _test/
 *.db-journal
 *.db-shm
 *.db-wal
+*.sql
 
 # IDEs, Editors, and OS-specific files
 .vscode/
