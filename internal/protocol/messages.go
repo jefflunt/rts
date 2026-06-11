@@ -14,10 +14,10 @@ import (
 type PacketType string
 
 const (
-	PacketTypeHandshakeRequest    PacketType = "handshake_request"
-	PacketTypeHandshakeResponse   PacketType = "handshake_response"
+	PacketTypeHandshakeRequest     PacketType = "handshake_request"
+	PacketTypeHandshakeResponse    PacketType = "handshake_response"
 	PacketTypeViewportSubscription PacketType = "viewport_subscription"
-	PacketTypeTilemapChunk        PacketType = "tilemap_chunk"
+	PacketTypeTilemapChunk         PacketType = "tilemap_chunk"
 )
 
 // Packet is a unified envelope that can carry any message payload.

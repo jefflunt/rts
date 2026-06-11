@@ -21,6 +21,8 @@ build/
 /server
 /client
 /scrollable-tilemap
+/bin/
+bin/
 
 # File system metadata
 .DS_Store
@@ -40,6 +42,8 @@ log/
 *.log
 *.pid
 .cache/
+_test/
+.go-work/
 
 # Databases and database dumps
 *.sqlite
@@ -61,6 +65,8 @@ log/
 .env
 .env.local
 .env.*.local
+go.work
+go.work.sum
 
 # Throwaway test data
 *test-data*

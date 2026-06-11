@@ -212,7 +212,7 @@ func TestGetVisibleTiles(t *testing.T) {
 	// 1. Camera at (0, 0)
 	cam.SetPosition(0, 0)
 	minCol, minRow, maxCol, maxRow := cam.GetVisibleTiles()
-	// TileSize = 32. 
+	// TileSize = 32.
 	// minCol = floor(0 / 32) = 0
 	// maxCol = floor(800 / 32) = 25 (clamped to MapWidth - 1 is not exceeded since MapWidth is 256)
 	// minRow = floor(0 / 32) = 0
