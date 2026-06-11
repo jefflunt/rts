@@ -1,5 +1,6 @@
 # Build folder and contents
 .build/
+build/
 
 # Compiled binaries and executables
 *.exe
@@ -34,6 +35,7 @@ $RECYCLE.BIN/
 
 # Ephemeral auto-generated files
 tmp/
+temp/
 log/
 *.log
 *.pid
@@ -53,6 +55,7 @@ log/
 .history/
 *.swp
 *.swo
+*~
 
 # Local configuration and secrets
 .env
