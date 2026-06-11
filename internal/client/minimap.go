@@ -247,3 +247,72 @@ func (m *Minimap) UpdateCache(tileMap *tilemap.Map) {
 		}
 	}
 }
+
+var whiteImage = ebiten.NewImage(1, 1)
+
+func init() {
+	whiteImage.Fill(color.White)
+}
+
+// drawRect draws a solid colored rectangle at screen coordinates (x, y) with specified width and height.
+func drawRect(screen *ebiten.Image, x, y, width, height float64, clr color.Color) {
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(width, height)
+	op.GeoM.Translate(x, y)
+	op.ColorScale.ScaleWithColor(clr)
+	screen.DrawImage(whiteImage, op)
+}
+
+// Draw draws the minimap cache, the double-lined metallic border, and the viewport indicator on the screen.
+func (m *Minimap) Draw(screen *ebiten.Image, cam *Camera) {
+	if cam == nil || m.CacheImage == nil {
+		return
+	}
+
+	screenHeight := cam.ViewportHeight
+	screenMinimapX := 16.0
+	screenMinimapY := float64(screenHeight) - 16.0 - 256.0
+
+	// 1. Draw background cache image
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(screenMinimapX, screenMinimapY)
+	screen.DrawImage(m.CacheImage, op)
+
+	// 2. Draw 2-pixel wide double metallic border around the minimap bounds
+	// Inner border: 2-pixel thick, silver color, touching minimap edge
+	silverColor := color.RGBA{R: 192, G: 192, B: 192, A: 255}
+	// Left line
+	drawRect(screen, screenMinimapX-2, screenMinimapY-2, 2, 260, silverColor)
+	// Right line
+	drawRect(screen, screenMinimapX+256, screenMinimapY-2, 2, 260, silverColor)
+	// Top line
+	drawRect(screen, screenMinimapX-2, screenMinimapY-2, 260, 2, silverColor)
+	// Bottom line
+	drawRect(screen, screenMinimapX-2, screenMinimapY+256, 260, 2, silverColor)
+
+	// Outer border: 2-pixel thick, steel grey, with a 2-pixel gap outside the inner border
+	steelColor := color.RGBA{R: 90, G: 90, B: 95, A: 255}
+	// Left line
+	drawRect(screen, screenMinimapX-6, screenMinimapY-6, 2, 268, steelColor)
+	// Right line
+	drawRect(screen, screenMinimapX+256+4, screenMinimapY-6, 2, 268, steelColor)
+	// Top line
+	drawRect(screen, screenMinimapX-6, screenMinimapY-6, 268, 2, steelColor)
+	// Bottom line
+	drawRect(screen, screenMinimapX-6, screenMinimapY+256+4, 268, 2, steelColor)
+
+	// 3. Draw white camera viewport indicator rectangle
+	vx, vy, vw, vh := m.ViewportIndicatorBounds(cam)
+	if vw > 0 && vh > 0 {
+		whiteColor := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+		// Draw thin 1-pixel white outline for viewport indicator
+		// Top line
+		drawRect(screen, vx, vy, vw, 1, whiteColor)
+		// Bottom line
+		drawRect(screen, vx, vy+vh-1, vw, 1, whiteColor)
+		// Left line
+		drawRect(screen, vx, vy+1, 1, vh-2, whiteColor)
+		// Right line
+		drawRect(screen, vx+vw-1, vy+1, 1, vh-2, whiteColor)
+	}
+}

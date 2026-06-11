@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/hajimehoshi/ebiten/v2"
 	tilemap "scrollable-tilemap/internal/map"
 )
 
@@ -410,4 +411,18 @@ func TestUpdateCacheNilMap(t *testing.T) {
 	if bounds.Dx() != 256 || bounds.Dy() != 256 {
 		t.Errorf("expected CacheImage bounds to be 256x256, got %dx%d", bounds.Dx(), bounds.Dy())
 	}
+}
+
+func TestMinimapDraw(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+	cam := NewCamera(800, 600, 300.0, 10)
+	screen := ebiten.NewImage(800, 600)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Minimap.Draw panicked: %v", r)
+		}
+	}()
+
+	m.Draw(screen, cam)
 }

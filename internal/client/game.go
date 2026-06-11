@@ -13,6 +13,7 @@ type Game struct {
 	input      InputProvider
 	tileMap    *tilemap.Map
 	tileImages map[tilemap.TileType]map[uint8][2]*ebiten.Image // [Type][Variant][isEven (0=false, 1=true)]
+	minimap    *Minimap
 }
 
 // NewGame creates and returns a new Game instance.
@@ -22,6 +23,10 @@ func NewGame(camera *Camera, input InputProvider, m *tilemap.Map) *Game {
 		input:      input,
 		tileMap:    m,
 		tileImages: make(map[tilemap.TileType]map[uint8][2]*ebiten.Image),
+	}
+	if m != nil {
+		g.minimap = NewMinimap(tilemap.MapWidth, tilemap.MapHeight, tilemap.TileSize)
+		g.minimap.UpdateCache(m)
 	}
 	g.pregenerateTiles()
 	return g
@@ -71,6 +76,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			}
 		}
 	}
+
+	// 3. Draw minimap overlay if initialized
+	if g.minimap != nil {
+		g.minimap.Draw(screen, g.camera)
+	}
 }
 
 // Layout takes the outside size (e.g., window size) and returns the game's logical screen size.
@@ -88,11 +98,22 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 // SetMap updates the client's local tilemap.
 func (g *Game) SetMap(m *tilemap.Map) {
 	g.tileMap = m
+	if m != nil {
+		if g.minimap == nil {
+			g.minimap = NewMinimap(tilemap.MapWidth, tilemap.MapHeight, tilemap.TileSize)
+		}
+		g.minimap.UpdateCache(m)
+	}
 }
 
 // GetMap returns the client's current tilemap.
 func (g *Game) GetMap() *tilemap.Map {
 	return g.tileMap
+}
+
+// GetMinimap returns the game's Minimap instance.
+func (g *Game) GetMinimap() *Minimap {
+	return g.minimap
 }
 
 // GetCamera returns the camera instance used by the game loop.
