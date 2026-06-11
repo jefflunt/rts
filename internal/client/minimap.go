@@ -1,5 +1,19 @@
 package client
 
+import (
+	"image/color"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	tilemap "scrollable-tilemap/internal/map"
+)
+
+// Predefined distinct shades of green for tile types on the minimap
+var (
+	ColorStandard = color.RGBA{R: 34, G: 139, B: 34, A: 255}  // Forest Green
+	ColorVariant1 = color.RGBA{R: 50, G: 205, B: 50, A: 255}  // Lime Green
+	ColorVariant2 = color.RGBA{R: 0, G: 100, B: 0, A: 255}    // Dark Green
+)
+
 // Minimap represents the client-side minimap overlay.
 // It occupies a fixed 256x256 area in the bottom-left corner of the client screen,
 // offset by 16 pixels from the edges.
@@ -7,6 +21,7 @@ type Minimap struct {
 	MapWidthTiles  int
 	MapHeightTiles int
 	TileSize       int
+	CacheImage     *ebiten.Image
 }
 
 // NewMinimap creates a new Minimap instance with the given map dimensions and tile size.
@@ -15,6 +30,7 @@ func NewMinimap(mapWidthTiles, mapHeightTiles, tileSize int) *Minimap {
 		MapWidthTiles:  mapWidthTiles,
 		MapHeightTiles: mapHeightTiles,
 		TileSize:       tileSize,
+		CacheImage:     ebiten.NewImage(256, 256),
 	}
 }
 
@@ -172,4 +188,62 @@ func (m *Minimap) ViewportIndicatorBounds(cam *Camera) (x, y, width, height floa
 		return 0, 0, 0, 0
 	}
 	return m.CalculateViewportIndicator(cam.X, cam.Y, cam.ViewportWidth, cam.ViewportHeight, cam.ViewportHeight)
+}
+
+// GetTileColor maps a TileType to its predefined, distinct shade of green.
+func (m *Minimap) GetTileColor(t tilemap.TileType) color.Color {
+	switch t {
+	case tilemap.TileTypeGrassStandard:
+		return ColorStandard
+	case tilemap.TileTypeGrassVariant1:
+		return ColorVariant1
+	case tilemap.TileTypeGrassVariant2:
+		return ColorVariant2
+	default:
+		return ColorStandard
+	}
+}
+
+// UpdateCache renders the tileMap's tiles into the 256x256 offscreen CacheImage.
+func (m *Minimap) UpdateCache(tileMap *tilemap.Map) {
+	if m.CacheImage == nil {
+		m.CacheImage = ebiten.NewImage(256, 256)
+	}
+
+	if tileMap == nil {
+		m.CacheImage.Clear()
+		return
+	}
+
+	dotSizeX := 1
+	if m.MapWidthTiles > 0 {
+		dotSizeX = 256 / m.MapWidthTiles
+	}
+	if dotSizeX < 1 {
+		dotSizeX = 1
+	}
+
+	dotSizeY := 1
+	if m.MapHeightTiles > 0 {
+		dotSizeY = 256 / m.MapHeightTiles
+	}
+	if dotSizeY < 1 {
+		dotSizeY = 1
+	}
+
+	for tx := 0; tx < m.MapWidthTiles; tx++ {
+		for ty := 0; ty < m.MapHeightTiles; ty++ {
+			tile, err := tileMap.GetTile(tx, ty)
+			if err != nil {
+				continue
+			}
+
+			col := m.GetTileColor(tile.Type)
+			for dx := 0; dx < dotSizeX; dx++ {
+				for dy := 0; dy < dotSizeY; dy++ {
+					m.CacheImage.Set(tx*dotSizeX+dx, ty*dotSizeY+dy, col)
+				}
+			}
+		}
+	}
 }
