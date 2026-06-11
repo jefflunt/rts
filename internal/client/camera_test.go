@@ -232,3 +232,146 @@ func TestGetVisibleTiles(t *testing.T) {
 		t.Errorf("expected (231, 237, 255, 255), got (%d, %d, %d, %d)", minCol, minRow, maxCol, maxRow)
 	}
 }
+
+func TestEbitenInputProvider(t *testing.T) {
+	provider := NewEbitenInputProvider()
+
+	// Verify that provider is of type InputProvider
+	var _ InputProvider = provider
+
+	// Since we are running in a headless unit test environment, ebiten functions
+	// should not crash or panic. They should return default zero values safely.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("EbitenInputProvider methods panicked: %v", r)
+		}
+	}()
+
+	_ = provider.IsArrowUpPressed()
+	_ = provider.IsArrowDownPressed()
+	_ = provider.IsArrowLeftPressed()
+	_ = provider.IsArrowRightPressed()
+
+	x, y := provider.CursorPosition()
+	// In headless tests, cursor position defaults to (0, 0) or negative values depending on OS/Ebiten version.
+	// We just want to make sure it runs and returns integers without crashing.
+	_, _ = x, y
+}
+
+func TestCameraClampLargeViewport(t *testing.T) {
+	// Map size is 256 * 32 = 8192. Let's create a viewport larger than that.
+	cam := NewCamera(10000, 10000, 300.0, 10)
+
+	// Since viewport is larger than map width/height, X and Y should clamp to 0
+	cam.SetPosition(100, 100)
+	if cam.X != 0 || cam.Y != 0 {
+		t.Errorf("expected coordinates to clamp to (0,0) when viewport is larger than map, got (%f, %f)", cam.X, cam.Y)
+	}
+}
+
+func TestCameraUpdateMouseEdgePanningBoundariesAndDiagonal(t *testing.T) {
+	cam := NewCamera(800, 600, 300.0, 10)
+
+	// Test mouse exactly at ScrollMargin boundary (left boundary: 10)
+	cam.SetPosition(100, 100)
+	mock := &mockInputProvider{mx: 10, my: 300}
+	cam.Update(mock, 0.1) // 30px left
+	if cam.X != 70 {
+		t.Errorf("expected panning left at ScrollMargin boundary, got X=%f", cam.X)
+	}
+
+	// Test mouse exactly at Right ScrollMargin boundary (right boundary: 800 - 10 = 790)
+	cam.SetPosition(100, 100)
+	mock = &mockInputProvider{mx: 790, my: 300}
+	cam.Update(mock, 0.1) // 30px right
+	if cam.X != 130 {
+		t.Errorf("expected panning right at ScrollMargin boundary, got X=%f", cam.X)
+	}
+
+	// Test diagonal edge panning (top-left corner triggers both left and up)
+	cam.SetPosition(100, 100)
+	mock = &mockInputProvider{mx: 5, my: 5}
+	cam.Update(mock, 0.1) // 30px left, 30px up
+	if cam.X != 70 || cam.Y != 70 {
+		t.Errorf("expected diagonal panning to (70, 70), got (%f, %f)", cam.X, cam.Y)
+	}
+}
+
+func TestCameraUpdateDeltaTimeVariations(t *testing.T) {
+	cam := NewCamera(800, 600, 300.0, 10)
+
+	// 1. Extreme lag frame: dt = 5.0s (300 * 5 = 1500px right movement)
+	cam.SetPosition(100, 100)
+	mock := &mockInputProvider{mx: 795, my: 300}
+	cam.Update(mock, 5.0)
+	if cam.X != 1600 {
+		t.Errorf("expected X to pan 1500px to 1600, got %f", cam.X)
+	}
+
+	// 2. Huge lag frame causing coordinates to exceed clamp boundaries: dt = 100.0s (300 * 100 = 30000px right movement)
+	// Max X is 7392
+	cam.SetPosition(100, 100)
+	cam.Update(mock, 100.0)
+	if cam.X != 7392 {
+		t.Errorf("expected X to clamp to max map boundary 7392, got %f", cam.X)
+	}
+
+	// 3. Zero dt: no movement should occur
+	cam.SetPosition(100, 100)
+	cam.Update(mock, 0.0)
+	if cam.X != 100 {
+		t.Errorf("expected no movement with dt=0, got X=%f", cam.X)
+	}
+
+	// 4. Negative dt: should pan in opposite direction safely
+	cam.SetPosition(100, 100)
+	cam.Update(mock, -0.1) // 30px left
+	if cam.X != 70 {
+		t.Errorf("expected X to pan left with negative dt and right-edge mouse, got X=%f", cam.X)
+	}
+}
+
+func TestCameraUpdateKeyboardCombinationsAndConflicts(t *testing.T) {
+	cam := NewCamera(800, 600, 300.0, 10)
+
+	// 1. Diagonal movement (down-left)
+	cam.SetPosition(100, 100)
+	mock := &mockInputProvider{left: true, down: true, mx: 400, my: 300}
+	cam.Update(mock, 0.1) // 30px left, 30px down
+	if cam.X != 70 || cam.Y != 130 {
+		t.Errorf("expected diagonal movement to (70, 130), got (%f, %f)", cam.X, cam.Y)
+	}
+
+	// 2. Conflicting keys: left + right (should cancel out, resulting in no horizontal movement)
+	cam.SetPosition(100, 100)
+	mock = &mockInputProvider{left: true, right: true, mx: 400, my: 300}
+	cam.Update(mock, 0.1)
+	if cam.X != 100 {
+		t.Errorf("expected conflicting horizontal keys to cancel out, got X=%f", cam.X)
+	}
+
+	// 3. Conflicting keys: up + down (should cancel out, resulting in no vertical movement)
+	cam.SetPosition(100, 100)
+	mock = &mockInputProvider{up: true, down: true, mx: 400, my: 300}
+	cam.Update(mock, 0.1)
+	if cam.Y != 100 {
+		t.Errorf("expected conflicting vertical keys to cancel out, got Y=%f", cam.Y)
+	}
+}
+
+func TestCameraNilInputProvider(t *testing.T) {
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(100, 100)
+
+	// Pass nil input provider: should not crash, should not move
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Update panicked when nil input provider passed: %v", r)
+		}
+	}()
+
+	cam.Update(nil, 0.1)
+	if cam.X != 100 || cam.Y != 100 {
+		t.Errorf("expected no movement with nil input provider, got (%f, %f)", cam.X, cam.Y)
+	}
+}
