@@ -25,7 +25,14 @@ func NewGame(camera *Camera, input InputProvider, m *tilemap.Map) *Game {
 		tileImages: make(map[tilemap.TileType]map[uint8][2]*ebiten.Image),
 	}
 	if m != nil {
-		g.minimap = NewMinimap(tilemap.MapWidth, tilemap.MapHeight, tilemap.TileSize)
+		mapWidthTiles := tilemap.MapWidth
+		mapHeightTiles := tilemap.MapHeight
+		tileSize := tilemap.TileSize
+		if camera != nil {
+			mapWidthTiles = camera.MapWidthPx / tilemap.TileSize
+			mapHeightTiles = camera.MapHeightPx / tilemap.TileSize
+		}
+		g.minimap = NewMinimap(mapWidthTiles, mapHeightTiles, tileSize)
 		g.minimap.UpdateCache(m)
 	}
 	g.pregenerateTiles()
@@ -103,9 +110,33 @@ func (g *Game) SetMap(m *tilemap.Map) {
 	g.tileMap = m
 	if m != nil {
 		if g.minimap == nil {
-			g.minimap = NewMinimap(tilemap.MapWidth, tilemap.MapHeight, tilemap.TileSize)
+			mapWidthTiles := tilemap.MapWidth
+			mapHeightTiles := tilemap.MapHeight
+			tileSize := tilemap.TileSize
+			if g.camera != nil {
+				mapWidthTiles = g.camera.MapWidthPx / tilemap.TileSize
+				mapHeightTiles = g.camera.MapHeightPx / tilemap.TileSize
+			}
+			g.minimap = NewMinimap(mapWidthTiles, mapHeightTiles, tileSize)
 		}
 		g.minimap.UpdateCache(m)
+	}
+}
+
+// SetMapDimensions updates the camera's and minimap's map dimensions and regenerates cache.
+func (g *Game) SetMapDimensions(widthTiles, heightTiles, tileSize int) {
+	if g.camera != nil {
+		g.camera.SetMapDimensions(widthTiles, heightTiles, tileSize)
+	}
+	if g.minimap == nil {
+		g.minimap = NewMinimap(widthTiles, heightTiles, tileSize)
+	} else {
+		g.minimap.MapWidthTiles = widthTiles
+		g.minimap.MapHeightTiles = heightTiles
+		g.minimap.TileSize = tileSize
+	}
+	if g.tileMap != nil {
+		g.minimap.UpdateCache(g.tileMap)
 	}
 }
 

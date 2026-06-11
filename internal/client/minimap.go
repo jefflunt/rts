@@ -210,10 +210,11 @@ func (m *Minimap) GetTileColor(t tilemap.TileType) color.Color {
 func (m *Minimap) UpdateCache(tileMap *tilemap.Map) {
 	if m.CacheImage == nil {
 		m.CacheImage = ebiten.NewImage(256, 256)
+	} else {
+		m.CacheImage.Clear()
 	}
 
 	if tileMap == nil {
-		m.CacheImage.Clear()
 		return
 	}
 
@@ -311,11 +312,16 @@ func (m *Minimap) Draw(screen *ebiten.Image, cam *Camera) {
 		// Top line
 		drawRect(screen, vx, vy, vw, 1, whiteColor)
 		// Bottom line
-		drawRect(screen, vx, vy+vh-1, vw, 1, whiteColor)
-		// Left line
-		drawRect(screen, vx, vy+1, 1, vh-2, whiteColor)
-		// Right line
-		drawRect(screen, vx+vw-1, vy+1, 1, vh-2, whiteColor)
+		if vh > 1 {
+			drawRect(screen, vx, vy+vh-1, vw, 1, whiteColor)
+		}
+		// Left and Right lines
+		if vh > 2 {
+			drawRect(screen, vx, vy+1, 1, vh-2, whiteColor)
+			if vw > 1 {
+				drawRect(screen, vx+vw-1, vy+1, 1, vh-2, whiteColor)
+			}
+		}
 	}
 }
 

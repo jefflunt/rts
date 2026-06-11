@@ -54,6 +54,13 @@ func (c *Camera) SetPosition(x, y float64) {
 	c.ClampPosition()
 }
 
+// SetMapDimensions updates the map's pixel dimensions and clamps the camera's position.
+func (c *Camera) SetMapDimensions(widthTiles, heightTiles, tileSize int) {
+	c.MapWidthPx = widthTiles * tileSize
+	c.MapHeightPx = heightTiles * tileSize
+	c.ClampPosition()
+}
+
 // ClampPosition restricts the camera coordinates to prevent the viewport
 // from panning outside the map bounds.
 func (c *Camera) ClampPosition() {
@@ -151,6 +158,9 @@ func (c *Camera) GetVisibleTiles() (minCol, minRow, maxCol, maxRow int) {
 	minCol, minRow = tilemap.WorldToTile(c.X, c.Y)
 	maxCol, maxRow = tilemap.WorldToTile(c.X+float64(c.ViewportWidth), c.Y+float64(c.ViewportHeight))
 
+	mapWidthTiles := c.MapWidthPx / tilemap.TileSize
+	mapHeightTiles := c.MapHeightPx / tilemap.TileSize
+
 	// Clamp the indices to the valid tilemap bounds.
 	if minCol < 0 {
 		minCol = 0
@@ -158,11 +168,11 @@ func (c *Camera) GetVisibleTiles() (minCol, minRow, maxCol, maxRow int) {
 	if minRow < 0 {
 		minRow = 0
 	}
-	if maxCol >= tilemap.MapWidth {
-		maxCol = tilemap.MapWidth - 1
+	if maxCol >= mapWidthTiles {
+		maxCol = mapWidthTiles - 1
 	}
-	if maxRow >= tilemap.MapHeight {
-		maxRow = tilemap.MapHeight - 1
+	if maxRow >= mapHeightTiles {
+		maxRow = mapHeightTiles - 1
 	}
 
 	// Just in case max is somehow less than min due to weird viewport/position values

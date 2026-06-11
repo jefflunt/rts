@@ -171,6 +171,7 @@ func (r *AppRunner) executeClientHandshakeAndLoop(conn net.Conn, proto string) e
 	cam := client.NewCamera(1024, 768, 300.0, 15)
 	input := client.NewEbitenInputProvider()
 	g := client.NewGame(cam, input, initialMap)
+	g.SetMapDimensions(hr.MapWidth, hr.MapHeight, hr.TileSize)
 
 	log.Println("Launching Ebitengine game client...")
 	if err := r.RunGameFn(g); err != nil {
