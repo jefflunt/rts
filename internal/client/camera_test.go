@@ -11,6 +11,7 @@ type mockInputProvider struct {
 	right bool
 	mx    int
 	my    int
+	click bool
 }
 
 func (m *mockInputProvider) IsArrowUpPressed() bool {
@@ -31,6 +32,10 @@ func (m *mockInputProvider) IsArrowRightPressed() bool {
 
 func (m *mockInputProvider) CursorPosition() (int, int) {
 	return m.mx, m.my
+}
+
+func (m *mockInputProvider) IsMouseButtonLeftPressed() bool {
+	return m.click
 }
 
 func TestNewCamera(t *testing.T) {

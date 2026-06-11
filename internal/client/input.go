@@ -13,6 +13,7 @@ type InputProvider interface {
 	IsArrowLeftPressed() bool
 	IsArrowRightPressed() bool
 	CursorPosition() (int, int)
+	IsMouseButtonLeftPressed() bool
 }
 
 // EbitenInputProvider is a concrete implementation of InputProvider
@@ -47,4 +48,9 @@ func (e *EbitenInputProvider) IsArrowRightPressed() bool {
 // CursorPosition returns the current mouse cursor coordinates.
 func (e *EbitenInputProvider) CursorPosition() (int, int) {
 	return ebiten.CursorPosition()
+}
+
+// IsMouseButtonLeftPressed returns true if the left mouse button is pressed.
+func (e *EbitenInputProvider) IsMouseButtonLeftPressed() bool {
+	return ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
 }

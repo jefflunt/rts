@@ -37,6 +37,9 @@ func (g *Game) Update() error {
 	if g.camera != nil {
 		g.camera.Update(g.input, 1.0/60.0)
 	}
+	if g.minimap != nil {
+		g.minimap.Update(g.camera, g.input)
+	}
 	return nil
 }
 

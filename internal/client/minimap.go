@@ -22,6 +22,7 @@ type Minimap struct {
 	MapHeightTiles int
 	TileSize       int
 	CacheImage     *ebiten.Image
+	isDragging     bool
 }
 
 // NewMinimap creates a new Minimap instance with the given map dimensions and tile size.
@@ -31,6 +32,7 @@ func NewMinimap(mapWidthTiles, mapHeightTiles, tileSize int) *Minimap {
 		MapHeightTiles: mapHeightTiles,
 		TileSize:       tileSize,
 		CacheImage:     ebiten.NewImage(256, 256),
+		isDragging:     false,
 	}
 }
 
@@ -314,5 +316,44 @@ func (m *Minimap) Draw(screen *ebiten.Image, cam *Camera) {
 		drawRect(screen, vx, vy+1, 1, vh-2, whiteColor)
 		// Right line
 		drawRect(screen, vx+vw-1, vy+1, 1, vh-2, whiteColor)
+	}
+}
+
+// IsDragging returns true if the user is currently clicking and dragging on the minimap.
+func (m *Minimap) IsDragging() bool {
+	return m.isDragging
+}
+
+// Update handles interaction (click/drag) on the minimap to pan and clamp the main camera viewport.
+func (m *Minimap) Update(cam *Camera, input InputProvider) {
+	if cam == nil || input == nil {
+		m.isDragging = false
+		return
+	}
+
+	if input.IsMouseButtonLeftPressed() {
+		mx, my := input.CursorPosition()
+		fx, fy := float64(mx), float64(my)
+
+		if !m.isDragging {
+			// Check if the click initiated inside the minimap area
+			_, _, ok := m.ScreenToMinimap(fx, fy, cam.ViewportHeight)
+			if ok {
+				m.isDragging = true
+			}
+		}
+
+		if m.isDragging {
+			// Translate screen coordinates to absolute world coordinates.
+			// ScreenToWorld clamps relative coordinates to minimap boundaries [0, 256].
+			wx, wy, _ := m.ScreenToWorld(fx, fy, cam.ViewportHeight)
+
+			// Center the camera viewport on (wx, wy)
+			targetX := wx - float64(cam.ViewportWidth)/2.0
+			targetY := wy - float64(cam.ViewportHeight)/2.0
+			cam.SetPosition(targetX, targetY)
+		}
+	} else {
+		m.isDragging = false
 	}
 }
