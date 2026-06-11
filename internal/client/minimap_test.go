@@ -426,3 +426,143 @@ func TestMinimapDraw(t *testing.T) {
 
 	m.Draw(screen, cam)
 }
+
+func TestMinimapUpdateNilParams(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+	cam := NewCamera(800, 600, 300.0, 10)
+	mock := &mockInputProvider{click: true, mx: 144, my: 456}
+
+	// Nil Camera
+	m.isDragging = true
+	m.Update(nil, mock)
+	if m.IsDragging() {
+		t.Error("expected IsDragging to be false when cam is nil")
+	}
+
+	// Nil Input
+	m.isDragging = true
+	m.Update(cam, nil)
+	if m.IsDragging() {
+		t.Error("expected IsDragging to be false when input is nil")
+	}
+}
+
+func TestMinimapUpdateClickAndDragInside(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(1000, 1000)
+
+	// screenMinimapX = 16
+	// screenMinimapY = 600 - 16 - 256 = 328
+	// Middle of minimap: mx = 16 + 128 = 144, my = 328 + 128 = 456
+	// This maps to relative rx = 128, ry = 128
+	// Which maps to world: wx = 4096, wy = 4096
+	// Centering camera (800x600) on (4096, 4096):
+	// targetX = 4096 - 400 = 3696
+	// targetY = 4096 - 300 = 3796
+
+	mock := &mockInputProvider{
+		click: true,
+		mx:    144,
+		my:    456,
+	}
+
+	if m.IsDragging() {
+		t.Error("expected IsDragging to be false initially")
+	}
+
+	m.Update(cam, mock)
+
+	if !m.IsDragging() {
+		t.Error("expected IsDragging to be true after clicking inside the minimap")
+	}
+
+	if cam.X != 3696 || cam.Y != 3796 {
+		t.Errorf("expected camera position to be (3696, 3796), got (%f, %f)", cam.X, cam.Y)
+	}
+}
+
+func TestMinimapUpdateClickOutside(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(1000, 1000)
+
+	// Outside position: mx = 10, my = 10
+	mock := &mockInputProvider{
+		click: true,
+		mx:    10,
+		my:    10,
+	}
+
+	m.Update(cam, mock)
+
+	if m.IsDragging() {
+		t.Error("expected IsDragging to remain false after clicking outside the minimap")
+	}
+
+	if cam.X != 1000 || cam.Y != 1000 {
+		t.Errorf("expected camera position to remain unchanged at (1000, 1000), got (%f, %f)", cam.X, cam.Y)
+	}
+}
+
+func TestMinimapUpdateContinueDragOutside(t *testing.T) {
+	m := NewMinimap(256, 256, 32) // 8192 x 8192 px
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(1000, 1000)
+
+	// Step 1: Click inside to initiate dragging
+	mock := &mockInputProvider{
+		click: true,
+		mx:    144,
+		my:    456,
+	}
+	m.Update(cam, mock)
+
+	if !m.IsDragging() {
+		t.Fatal("expected drag to initiate")
+	}
+
+	// Step 2: Drag outside to the left (mx = 5, my = 456)
+	// This should map to rx = 5 - 16 = -11, ry = 128
+	// rx clamps to 0, ry = 128
+	// Which maps to world: wx = 0, wy = 4096
+	// Centering camera (800x600) on (0, 4096):
+	// targetX = 0 - 400 = -400 -> clamps to 0
+	// targetY = 4096 - 300 = 3796
+	mock.mx = 5
+	m.Update(cam, mock)
+
+	if !m.IsDragging() {
+		t.Error("expected IsDragging to remain true when moving outside while holding click")
+	}
+
+	if cam.X != 0 || cam.Y != 3796 {
+		t.Errorf("expected camera position to be clamped to (0, 3796), got (%f, %f)", cam.X, cam.Y)
+	}
+}
+
+func TestMinimapUpdateReleaseButton(t *testing.T) {
+	m := NewMinimap(256, 256, 32)
+	cam := NewCamera(800, 600, 300.0, 10)
+	cam.SetPosition(1000, 1000)
+
+	// Step 1: Drag is active
+	m.isDragging = true
+
+	// Step 2: Release button (click = false), mouse moves to (144, 456)
+	mock := &mockInputProvider{
+		click: false,
+		mx:    144,
+		my:    456,
+	}
+
+	m.Update(cam, mock)
+
+	if m.IsDragging() {
+		t.Error("expected IsDragging to become false after mouse button is released")
+	}
+
+	if cam.X != 1000 || cam.Y != 1000 {
+		t.Errorf("expected camera position to remain unchanged at (1000, 1000), got (%f, %f)", cam.X, cam.Y)
+	}
+}
