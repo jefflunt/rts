@@ -1,0 +1,30 @@
+# Build folder and contents
+.build/
+
+# Compiled binaries and executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# File system metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Ephemeral auto-generated files
+tmp/
+log/
+*.log
+*.pid
+
+# Databases and database dumps
+*.sqlite
+*.db
