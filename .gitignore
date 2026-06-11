@@ -15,6 +15,10 @@
 *.o
 *.obj
 *.coverprofile
+/game
+/server
+/client
+/scrollable-tilemap
 
 # File system metadata
 .DS_Store
