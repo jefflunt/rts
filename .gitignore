@@ -14,6 +14,7 @@
 *.a
 *.o
 *.obj
+*.wasm
 *.coverprofile
 /game
 /server
@@ -28,6 +29,8 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
 
 # Ephemeral auto-generated files
 tmp/
@@ -38,11 +41,16 @@ log/
 
 # Databases and database dumps
 *.sqlite
+*.sqlite3
 *.db
+*.db-journal
+*.db-shm
+*.db-wal
 
 # IDEs, Editors, and OS-specific files
 .vscode/
 .idea/
+.history/
 *.swp
 *.swo
 
@@ -54,3 +62,5 @@ log/
 # Throwaway test data
 *test-data*
 *.tmp
+*.temp
+*.bak
